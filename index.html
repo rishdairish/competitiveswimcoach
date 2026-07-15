@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/1x5rMtKxUgtI4oDKS5ctL5TTwVhOxBZ0/46f201ce-3a3a-480c-8ee1-f695df56058f/files/">
@@ -116,7 +117,7 @@ input,select,textarea{font-family:inherit;}
 .ring svg{transform:rotate(-90deg);}
 .ring .val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
 
-textarea,input[type=text],input[type=number],input[type=date],select,input[type=time]{
+textarea,input[type=text],input[type=number],input[type=date],select,input[type=time],input[type=email],input[type=password]{
   width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--glassBorder);
   background:rgba(3,23,51,0.4); color:var(--text); font-size:13px; margin-bottom:12px;
 }
@@ -220,10 +221,46 @@ label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bot
 .plan-toggle .pt-opt{flex:1;text-align:center;padding:12px;border-radius:14px;border:1px solid var(--glassBorder);cursor:pointer;background:rgba(255,255,255,0.03);}
 .plan-toggle .pt-opt.selected{border-color:var(--aqua);background:rgba(24,196,214,0.12);}
 .plan-toggle .pt-opt .price{font-size:20px;font-weight:800;color:var(--aqua2);}
+/* AUTH SCREEN */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-card{width:100%;max-width:440px;background:var(--glass);border:1px solid var(--glassBorder);border-radius:20px;padding:32px 30px;backdrop-filter:blur(20px);}
+.auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.auth-tabs{display:flex;gap:8px;margin-bottom:18px;background:rgba(255,255,255,0.04);border-radius:12px;padding:4px;}
+.auth-tab{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;}
+.auth-tab.active{background:linear-gradient(135deg,var(--aqua),var(--blue));color:#04182b;}
+.pw-wrap{position:relative;}
+.pw-wrap input{width:100%;padding-right:36px;}
+.pw-toggle{position:absolute;right:10px;top:9px;cursor:pointer;font-size:14px;color:var(--muted);user-select:none;}
+.pw-strength{height:5px;border-radius:4px;background:rgba(255,255,255,0.08);margin:6px 0 10px;overflow:hidden;}
+.pw-strength div{height:100%;width:0%;transition:.25s;border-radius:4px;}
+.auth-card label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+.auth-error{color:var(--bad);font-size:12px;margin:-4px 0 10px;min-height:14px;}
+.auth-link{color:var(--aqua2);cursor:pointer;font-weight:600;}
+.checkline{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);margin:8px 0 14px;}
+.checkline input{width:auto;margin:2px 0 0;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-<div class="app">
+
+<!-- AUTH SCREEN -->
+<div class="auth-wrap" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-icon">🏊</div>
+      <div class="brand-text">SwimAI Coach<span>Performance Platform</span></div>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin" onclick="setAuthTab('login')">Log In</div>
+      <div class="auth-tab" id="tabSignup" onclick="setAuthTab('signup')">Sign Up</div>
+    </div>
+    <div id="authBody"></div>
+    <div class="hint center mt8">Real accounts, synced across devices — powered by Supabase.</div>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
+
 
   <!-- SIDEBAR -->
   <div class="sidebar">
@@ -233,8 +270,11 @@ label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bot
     </div>
     <div class="nav-scroll" id="navList"></div>
     <div class="sidebar-footer">
+      <div class="navitem" data-page="friends"><span class="ic">👥</span>Friends</div>
+      <div class="navitem" data-page="feed"><span class="ic">📸</span>Social Feed</div>
       <div class="navitem" data-page="profile"><span class="ic">👤</span>Profile</div>
       <div class="navitem" data-page="coachportal"><span class="ic">🧑‍🏫</span>Coach Portal</div>
+      <div class="navitem" onclick="logout()"><span class="ic">🚪</span>Log Out</div>
     </div>
   </div>
 
@@ -280,6 +320,10 @@ label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bot
     <div class="page" id="page-video"></div>
     <!-- PROFILE -->
     <div class="page" id="page-profile"></div>
+    <!-- FRIENDS -->
+    <div class="page" id="page-friends"></div>
+    <!-- SOCIAL FEED -->
+    <div class="page" id="page-feed"></div>
     <!-- COACH PORTAL -->
     <div class="page" id="page-coachportal"></div>
   </div>
@@ -314,58 +358,470 @@ label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bot
     <div class="upgrade-feature">🎯 <div><b>Goal Planner</b> — personalised roadmaps for any swimming goal</div></div>
     <div class="upgrade-feature">😴 <div><b>Recovery Insights & Sports Psychology</b> — daily confidence, focus & recovery tools</div></div>
     <div class="upgrade-feature">📈 <div><b>Unlimited History, Cloud Sync, Coach Sharing & PDF Reports</b></div></div>
-    <button class="pill-btn primary mt14" style="width:100%;justify-content:center;" onclick="activatePremium()">Start Premium — <span id="upgradeCta">A$9.99/month</span></button>
-    <div class="hint center mt8">Simulated upgrade for demo purposes — no payment is processed.</div>
+    <button class="pill-btn primary mt14" style="width:100%;justify-content:center;" onclick="activatePremium(this)">Start Premium — <span id="upgradeCta">A$9.99/month</span></button>
+    <div class="hint center mt8">Secure checkout powered by Stripe. Cancel anytime.</div>
   </div>
 </div>
 
+<!-- Friend Request / Report Modals -->
+<div class="modal-bg" id="reportModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('reportModal')">✕</button>
+    <h2>🚩 Report User</h2>
+    <div class="hint">Reports are stored for review — blocking also stops you from seeing that user anywhere in the app.</div>
+    <label>Reason</label>
+    <select id="reportReason"><option>Harassment</option><option>Impersonation</option><option>Spam</option><option>Inappropriate content</option><option>Other</option></select>
+    <label>Details (optional)</label><textarea id="reportDetails"></textarea>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="submitReport()">Submit Report</button>
+  </div>
+</div>
+
+</div><!-- /appRoot -->
+
 <script>
-/* ============ STORAGE ============ */
-const DB_KEY='swimai_db_v1';
-function loadDB(){
-  let d=localStorage.getItem(DB_KEY);
-  if(d) return JSON.parse(d);
-  return seedDB();
-}
-function saveDB(){localStorage.setItem(DB_KEY, JSON.stringify(DB));}
+/* ============================================================
+   BACKEND CONFIG — paste your own Supabase project's values here.
+   See SETUP_INSTRUCTIONS.md for how to get these (free, ~5 minutes).
+   ============================================================ */
+const SUPABASE_URL = 'https://yqqwomftttedaaskghvj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_8dSqtHMLDwyPrfn7T1KyjQ_bwOpoSqz';
+
+const BACKEND_CONFIGURED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+const SDK_LOADED = typeof window.supabase !== 'undefined' && !!window.supabase.createClient;
+const sb = (BACKEND_CONFIGURED && SDK_LOADED) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 function uid(){return Math.random().toString(36).slice(2,9);}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function daysBetween(a,b){return Math.ceil((new Date(a)-new Date(b))/86400000);}
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function jv(id){return document.getElementById(id).value;}
+function timeToSeconds(t){
+  if(!t) return null;
+  const parts=String(t).split(':');
+  if(parts.length===2) return (+parts[0])*60+(+parts[1]);
+  const n=parseFloat(t);
+  return isNaN(n)?null:n;
+}
 
-function seedDB(){
-  // Brand-new accounts start completely empty. No pre-filled workouts, competitions,
-  // personal bests, nutrition logs, calendar events, or stats — everything here is
-  // only ever populated by real actions the user takes inside the app.
-  const db = {
-    profile:{name:'',age:null,height:null,weight:null,club:'',coach:'',
+/* ============ APP DATA (per-user, synced to Supabase) ============ */
+// Brand-new accounts start completely empty. No pre-filled workouts,
+// competitions, personal bests, nutrition logs, calendar events, or stats —
+// everything here is only ever populated by real actions the user takes.
+function blankAppData(){
+  return {
+    profile:{age:null,height:null,weight:null,coach:'',
       strokes:[],events:[],
       goals:'',level:'Competitive / National Level',
       equipment:[]},
-    nutrition:[],
-    workoutsSwim:[],
-    workoutsDryland:[],
-    journal:[],
-    competitions:[],
-    pbs:{},
-    pbHistory:{},
-    chatHistory:[],
-    calendar:[],
+    nutrition:[], workoutsSwim:[], workoutsDryland:[], journal:[], competitions:[],
+    pbs:{}, pbHistory:{}, chatHistory:[], calendar:[],
     hydration:{date:todayStr(),today:0,goal:2500},
-    plan:'free',
-    planTier:'monthly',
-    chatUsage:{date:todayStr(),count:0},
-    goals:[],
-    videoAnalyses:[],
+    plan:'free', planTier:'monthly', chatUsage:{date:todayStr(),count:0},
+    goals:[], videoAnalyses:[],
   };
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-  return db;
 }
-function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+let DB = null;          // in-memory cache of the logged-in user's app_data.data
+let currentUser = null; // the row from `profiles`, merged with auth email
+let saveTimer = null;
 
-let DB = loadDB();
-// Reset the daily water counter when a new day starts.
-if(DB.hydration.date!==todayStr()){DB.hydration={date:todayStr(),today:0,goal:DB.hydration.goal||2500};saveDB();}
+function saveDB(){
+  // Optimistic local cache is already updated by the caller; persist to
+  // Supabase in the background (debounced so rapid edits don't spam requests).
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{
+      const { error } = await sb.from('app_data').upsert({ user_id: currentUser.id, data: DB, updated_at: new Date().toISOString() });
+      if(error){ console.error('Save failed', error); showSyncNotice('Could not sync to server — check your connection.'); }
+    }catch(e){ console.error(e); showSyncNotice('Could not sync to server — check your connection.'); }
+  }, 500);
+}
+function showSyncNotice(msg){
+  let el=document.getElementById('syncNotice');
+  if(!el){
+    el=document.createElement('div'); el.id='syncNotice';
+    el.style.cssText='position:fixed;bottom:16px;right:16px;background:#3a1414;color:#ffb4b4;padding:10px 16px;border-radius:10px;font-size:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},4000);
+}
+
+/* ============================================================
+   ACCOUNT SYSTEM — real accounts via Supabase Auth.
+   Real signup-confirmation and password-reset emails are sent by Supabase.
+   Accounts work from any device: log in with the same email/password
+   anywhere and your data (and friends) follow you.
+   ============================================================ */
+function passwordStrength(pw){
+  let score=0;
+  if(pw.length>=8) score++;
+  if(pw.length>=12) score++;
+  if(/[A-Z]/.test(pw)&&/[a-z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  return Math.min(score,5);
+}
+function togglePw(id){
+  const inp=document.getElementById(id);
+  inp.type = inp.type==='password'?'text':'password';
+}
+function setAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active',tab==='signup');
+  if(tab==='login') renderLoginForm(); else renderSignupForm();
+}
+function renderSetupNotice(){
+  document.getElementById('authBody').innerHTML=`
+    <div class="hint" style="color:#FFC857;">
+      ⚠️ No backend connected yet. Open this HTML file in a text editor and fill in
+      <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> near the top of the
+      &lt;script&gt; section — see <b>SETUP_INSTRUCTIONS.md</b> for the 5-minute walkthrough.
+    </div>`;
+  document.querySelector('.auth-tabs').style.display='none';
+}
+function renderLoginForm(){
+  document.getElementById('authBody').innerHTML=`
+    <label>Email Address</label><input type="email" id="liEmail" placeholder="you@example.com">
+    <label>Password</label>
+    <div class="pw-wrap"><input type="password" id="liPassword"><span class="pw-toggle" onclick="togglePw('liPassword')">👁</span></div>
+    <div class="checkline"><input type="checkbox" id="liRemember" checked><span>Keep me signed in on this device</span></div>
+    <div class="auth-error" id="liError"></div>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="doLogin()">Log In</button>
+    <div class="hint center mt8"><span class="auth-link" onclick="renderForgotForm()">Forgot password?</span></div>
+  `;
+}
+function renderSignupForm(){
+  document.getElementById('authBody').innerHTML=`
+    <div class="form-grid">
+      <div class="field"><label>First Name</label><input type="text" id="suFirst"></div>
+      <div class="field"><label>Last Name</label><input type="text" id="suLast"></div>
+    </div>
+    <label>Email Address</label><input type="email" id="suEmail" placeholder="you@example.com">
+    <label>Password</label>
+    <div class="pw-wrap"><input type="password" id="suPassword" oninput="updatePwStrength('pwBar','suPassword')"><span class="pw-toggle" onclick="togglePw('suPassword')">👁</span></div>
+    <div class="pw-strength"><div id="pwBar"></div></div>
+    <label>Confirm Password</label>
+    <div class="pw-wrap"><input type="password" id="suConfirm"><span class="pw-toggle" onclick="togglePw('suConfirm')">👁</span></div>
+    <div class="form-grid">
+      <div class="field"><label>Date of Birth</label><input type="date" id="suDob"></div>
+      <div class="field"><label>Country</label><input type="text" id="suCountry" placeholder="e.g. Australia"></div>
+    </div>
+    <label>Swimming Club (optional)</label><input type="text" id="suClub">
+    <div class="checkline"><input type="checkbox" id="suTerms"><span>I accept the <span class="auth-link">Terms & Conditions</span> and <span class="auth-link">Privacy Policy</span></span></div>
+    <div class="auth-error" id="suError"></div>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="doSignup()">Create Account</button>
+  `;
+}
+function renderForgotForm(){
+  document.getElementById('authBody').innerHTML=`
+    <div class="hint">We'll send a real password-reset link to this email address.</div>
+    <label>Email Address</label><input type="email" id="frEmail">
+    <div class="auth-error" id="frError"></div>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="doSendReset()">Send Reset Link</button>
+    <div class="hint center mt8"><span class="auth-link" onclick="renderLoginForm()">Back to log in</span></div>
+  `;
+}
+function renderNewPasswordForm(){
+  document.querySelector('.auth-tabs').style.display='none';
+  document.getElementById('authBody').innerHTML=`
+    <div class="hint">Choose a new password for your account.</div>
+    <label>New Password</label>
+    <div class="pw-wrap"><input type="password" id="npPassword" oninput="updatePwStrength('npBar','npPassword')"><span class="pw-toggle" onclick="togglePw('npPassword')">👁</span></div>
+    <div class="pw-strength"><div id="npBar"></div></div>
+    <label>Confirm New Password</label>
+    <div class="pw-wrap"><input type="password" id="npConfirm"><span class="pw-toggle" onclick="togglePw('npConfirm')">👁</span></div>
+    <div class="auth-error" id="npError"></div>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="doSetNewPassword()">Set New Password</button>
+  `;
+}
+function updatePwStrength(barId,inputId){
+  const pw=document.getElementById(inputId).value;
+  const s=passwordStrength(pw);
+  const colors=['#FF6B6B','#FF6B6B','#FFC857','#FFC857','#33D690','#18C4D6'];
+  const bar=document.getElementById(barId);
+  bar.style.width=(s/5*100)+'%'; bar.style.background=colors[s];
+}
+async function doSignup(){
+  const first=jv('suFirst').trim(), last=jv('suLast').trim(), email=jv('suEmail').trim().toLowerCase();
+  const pw=jv('suPassword'), confirm=jv('suConfirm'), dob=jv('suDob'), country=jv('suCountry').trim(), club=jv('suClub').trim();
+  const terms=document.getElementById('suTerms').checked;
+  const err=document.getElementById('suError'); err.style.color='var(--bad)';
+  if(!first||!last){err.textContent='Please enter your first and last name.';return;}
+  if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Please enter a valid email address.';return;}
+  if(!dob){err.textContent='Please enter your date of birth.';return;}
+  if(!country){err.textContent='Please enter your country.';return;}
+  if(passwordStrength(pw)<2){err.textContent='Please choose a stronger password (8+ characters, mix of letters & numbers).';return;}
+  if(pw!==confirm){err.textContent='Passwords do not match.';return;}
+  if(!terms){err.textContent='You must accept the Terms & Conditions and Privacy Policy.';return;}
+  err.textContent='Creating your account...';
+  const { data, error } = await sb.auth.signUp({
+    email, password: pw,
+    options:{ data:{ first_name:first, last_name:last, dob, country, club } }
+  });
+  if(error){ err.textContent=error.message; return; }
+  if(data.session){
+    // Email confirmation is off in this project — log straight in.
+    await afterLogin(data.session);
+  } else {
+    err.style.color='var(--good)';
+    err.textContent='Account created! Check your email for a confirmation link, then log in.';
+    setTimeout(()=>{ setAuthTab('login'); document.getElementById('liEmail').value=email; },1800);
+  }
+}
+async function doLogin(){
+  const email=jv('liEmail').trim().toLowerCase(), pw=jv('liPassword');
+  const err=document.getElementById('liError'); err.style.color='var(--bad)';
+  err.textContent='Logging in...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if(error){ err.textContent=error.message; return; }
+  await afterLogin(data.session);
+}
+async function doSendReset(){
+  const email=jv('frEmail').trim().toLowerCase();
+  const err=document.getElementById('frError'); err.style.color='var(--bad)';
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
+  if(error){ err.textContent=error.message; return; }
+  err.style.color='var(--good)';
+  err.textContent='If that email has an account, a reset link is on its way.';
+}
+async function doSetNewPassword(){
+  const pw=jv('npPassword'), confirm=jv('npConfirm');
+  const err=document.getElementById('npError'); err.style.color='var(--bad)';
+  if(passwordStrength(pw)<2){err.textContent='Please choose a stronger password.';return;}
+  if(pw!==confirm){err.textContent='Passwords do not match.';return;}
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if(error){ err.textContent=error.message; return; }
+  err.style.color='var(--good)';
+  err.textContent='Password updated! Redirecting...';
+  const { data:{ session } } = await sb.auth.getSession();
+  setTimeout(()=>afterLogin(session), 1000);
+}
+async function logout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+async function afterLogin(session){
+  const uidAuth = session.user.id;
+  let { data: profile, error } = await sb.from('profiles').select('*').eq('id', uidAuth).single();
+  if(error || !profile){
+    // Trigger may not have finished yet on a brand-new signup — retry once.
+    await new Promise(r=>setTimeout(r,800));
+    ({ data: profile, error } = await sb.from('profiles').select('*').eq('id', uidAuth).single());
+  }
+  if(error || !profile){
+    document.getElementById('liError') && (document.getElementById('liError').textContent='Could not load your profile — please try again.');
+    return;
+  }
+  currentUser = profile;
+  let { data: appRow } = await sb.from('app_data').select('data').eq('user_id', uidAuth).single();
+  DB = (appRow && appRow.data && Object.keys(appRow.data).length) ? appRow.data : blankAppData();
+  if(DB.hydration.date!==todayStr()){DB.hydration={date:todayStr(),today:0,goal:DB.hydration.goal||2500};saveDB();}
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appRoot').style.display='';
+  document.getElementById('topAvatar').textContent=avatarInitials(displayName(currentUser));
+  await loadSubscription();
+  renderNotifs();
+  go('dashboard');
+  checkCheckoutReturn();
+}
+function displayName(p){ return `${p.first_name||''} ${p.last_name||''}`.trim()||p.email; }
+async function initAuth(){
+  if(!BACKEND_CONFIGURED){
+    renderSetupNotice();
+    return;
+  }
+  if(!SDK_LOADED){
+    document.getElementById('authBody').innerHTML=`<div class="hint" style="color:#FF6B6B;">
+      ⚠️ Could not load the Supabase SDK (no internet connection, or the CDN is blocked). Check your connection and reload the page.
+    </div>`;
+    document.querySelector('.auth-tabs').style.display='none';
+    return;
+  }
+  // Handle a password-recovery link (Supabase redirects back here with a token)
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(event==='PASSWORD_RECOVERY') renderNewPasswordForm();
+  });
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){ await afterLogin(session); return; }
+  renderLoginForm();
+}
+
+/* ============ FRIENDS SYSTEM (real accounts, any device) ============ */
+async function searchUsers(query){
+  const q=query.trim();
+  if(!q) return [];
+  const { data, error } = await sb.from('profiles')
+    .select('*')
+    .neq('id', currentUser.id)
+    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+    .limit(20);
+  if(error){ console.error(error); return []; }
+  const { data: blocked } = await sb.from('blocks').select('blocked').eq('blocker', currentUser.id);
+  const blockedIds = new Set((blocked||[]).map(b=>b.blocked));
+  return data.filter(u=>!blockedIds.has(u.id));
+}
+async function friendStatusWith(otherId){
+  const { data } = await sb.from('friendships').select('id')
+    .or(`and(user_a.eq.${currentUser.id},user_b.eq.${otherId}),and(user_a.eq.${otherId},user_b.eq.${currentUser.id})`);
+  return (data && data.length>0);
+}
+async function sendFriendRequest(toId){
+  const { data: existing } = await sb.from('friend_requests').select('id,status')
+    .eq('from_user', currentUser.id).eq('to_user', toId).eq('status','pending');
+  if(existing && existing.length){ alert('Friend request already sent.'); return; }
+  const { error } = await sb.from('friend_requests').insert({ from_user: currentUser.id, to_user: toId, status:'pending' });
+  if(error){ alert('Could not send request: '+error.message); return; }
+  renderFriendSearchResults();
+}
+async function respondFriendRequest(reqId, fromId, accept){
+  await sb.from('friend_requests').update({ status: accept?'accepted':'declined' }).eq('id', reqId);
+  if(accept){
+    await sb.from('friendships').insert({ user_a: currentUser.id, user_b: fromId });
+  }
+  renderFriends();
+}
+async function removeFriend(otherId){
+  await sb.from('friendships').delete()
+    .or(`and(user_a.eq.${currentUser.id},user_b.eq.${otherId}),and(user_a.eq.${otherId},user_b.eq.${currentUser.id})`);
+  renderFriends();
+}
+async function blockUser(otherId){
+  await sb.from('blocks').insert({ blocker: currentUser.id, blocked: otherId });
+  await sb.from('friendships').delete()
+    .or(`and(user_a.eq.${currentUser.id},user_b.eq.${otherId}),and(user_a.eq.${otherId},user_b.eq.${currentUser.id})`);
+  renderFriends();
+}
+let reportTarget=null;
+function openReportModal(otherId){ reportTarget=otherId; openModal('reportModal'); }
+async function submitReport(){
+  await sb.from('reports').insert({ reporter: currentUser.id, target: reportTarget, reason: jv('reportReason'), details: jv('reportDetails') });
+  closeModal('reportModal');
+  alert('Report submitted for review.');
+}
+async function getMyFriends(){
+  const { data } = await sb.from('friendships').select('*')
+    .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`);
+  const ids = (data||[]).map(f=> f.user_a===currentUser.id ? f.user_b : f.user_a);
+  if(!ids.length) return [];
+  const { data: profiles } = await sb.from('profiles').select('*').in('id', ids);
+  return profiles||[];
+}
+async function getIncomingRequests(){
+  const { data } = await sb.from('friend_requests').select('*').eq('to_user', currentUser.id).eq('status','pending');
+  if(!data || !data.length) return [];
+  const ids = data.map(r=>r.from_user);
+  const { data: profiles } = await sb.from('profiles').select('*').in('id', ids);
+  const byId = Object.fromEntries((profiles||[]).map(p=>[p.id,p]));
+  return data.map(r=>({...r, fromProfile: byId[r.from_user]}));
+}
+async function renderFriends(){
+  const el=document.getElementById('page-friends');
+  el.innerHTML=`<div class="small">Loading...</div>`;
+  const [incoming, friends] = await Promise.all([getIncomingRequests(), getMyFriends()]);
+  el.innerHTML=`
+  <div class="card">
+    <h3>Find Swimmers</h3>
+    <div class="hint">Search across everyone with a real account — invite a training partner to sign up to connect for real.</div>
+    <input type="text" id="friendSearch" placeholder="Search by name or email" oninput="renderFriendSearchResults()">
+    <div id="friendSearchResults"></div>
+  </div>
+  <div class="grid grid-2 mt20">
+    <div class="card">
+      <h3>Friend Requests${incoming.length?` (${incoming.length})`:''}</h3>
+      ${incoming.length? incoming.map(r=>`
+        <div class="list-item"><span>${displayName(r.fromProfile||{first_name:'Unknown',last_name:''})}</span>
+          <span><button class="pill-btn primary" style="padding:6px 10px;" onclick="respondFriendRequest('${r.id}','${r.from_user}',true)">Accept</button>
+          <button class="pill-btn" style="padding:6px 10px;" onclick="respondFriendRequest('${r.id}','${r.from_user}',false)">Decline</button></span></div>
+      `).join('') : '<div class="small">No pending friend requests.</div>'}
+    </div>
+    <div class="card">
+      <h3>My Friends</h3>
+      ${friends.length? friends.map(f=>`
+        <div class="list-item"><span>${displayName(f)}</span>
+          <span><button class="pill-btn" style="padding:6px 10px;" onclick="removeFriend('${f.id}')">Remove</button>
+          <button class="pill-btn" style="padding:6px 10px;" onclick="blockUser('${f.id}')">Block</button></span></div>
+      `).join('') : '<div class="small">No friends added yet. Find other swimmers and connect.</div>'}
+    </div>
+  </div>`;
+}
+async function renderFriendSearchResults(){
+  const q=jv('friendSearch');
+  const box=document.getElementById('friendSearchResults');
+  if(!q.trim()){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="small mt8">Searching...</div>';
+  const results=await searchUsers(q);
+  if(!results.length){ box.innerHTML='<div class="small mt8">No matching accounts found.</div>'; return; }
+  const statuses = await Promise.all(results.map(u=>friendStatusWith(u.id)));
+  box.innerHTML = results.map((u,i)=>`
+    <div class="list-item"><span>${displayName(u)} <span class="small">${u.club?'• '+u.club:''}</span></span>
+      <span>${statuses[i]?'<span class="badge good">Friends</span>':
+        `<button class="pill-btn primary" style="padding:6px 10px;" onclick="sendFriendRequest('${u.id}')">Add Friend</button>`}
+      <button class="pill-btn" style="padding:6px 10px;" onclick="openReportModal('${u.id}')">Report</button></span></div>
+  `).join('');
+}
+
+/* ============ SOCIAL FEED (real posts, any device) ============ */
+async function submitPost(){
+  const text=jv('postText').trim(); if(!text) return;
+  const { error } = await sb.from('posts').insert({ author: currentUser.id, content: text, visibility:'friends' });
+  if(error){ alert('Could not post: '+error.message); return; }
+  renderFeed();
+}
+async function toggleLike(postId, alreadyLiked){
+  if(alreadyLiked) await sb.from('post_likes').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+  else await sb.from('post_likes').insert({ post_id: postId, user_id: currentUser.id });
+  renderFeed();
+}
+async function addComment(postId){
+  const inp=document.getElementById('commentInput-'+postId);
+  const text=inp.value.trim(); if(!text) return;
+  await sb.from('post_comments').insert({ post_id: postId, author: currentUser.id, text });
+  renderFeed();
+}
+async function renderFeed(){
+  const el=document.getElementById('page-feed');
+  el.innerHTML=`
+  <div class="card">
+    <h3>Share an Update</h3>
+    <textarea id="postText" placeholder="Share a training update, achievement, or race result..."></textarea>
+    <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="submitPost()">Post to Friends</button>
+  </div>
+  <div class="mt20" id="postList"><div class="small">Loading feed...</div></div>`;
+
+  const { data: posts, error } = await sb.from('posts').select('*').order('created_at',{ascending:false}).limit(50);
+  if(error){ document.getElementById('postList').innerHTML=`<div class="card"><div class="small">Could not load the feed.</div></div>`; return; }
+  if(!posts.length){ document.getElementById('postList').innerHTML=`<div class="card"><div class="small">No posts yet. Share your first achievement, workout, or race result — only your real friends will see it.</div></div>`; return; }
+
+  const postIds = posts.map(p=>p.id);
+  const authorIds = [...new Set(posts.map(p=>p.author))];
+  const [{data:profiles}, {data:likes}, {data:comments}] = await Promise.all([
+    sb.from('profiles').select('*').in('id', authorIds),
+    sb.from('post_likes').select('*').in('post_id', postIds),
+    sb.from('post_comments').select('*').in('post_id', postIds).order('created_at',{ascending:true}),
+  ]);
+  const profileById = Object.fromEntries((profiles||[]).map(p=>[p.id,p]));
+  document.getElementById('postList').innerHTML = posts.map(p=>{
+    const author = profileById[p.author] || {first_name:'Unknown',last_name:''};
+    const postLikes = (likes||[]).filter(l=>l.post_id===p.id);
+    const liked = postLikes.some(l=>l.user_id===currentUser.id);
+    const postComments = (comments||[]).filter(c=>c.post_id===p.id);
+    return `<div class="card mt14">
+      <div class="flex-between"><b>${displayName(author)}</b><span class="small">${fmtDate(p.created_at)}</span></div>
+      <div class="mt8">${p.content}</div>
+      <div class="mt8" style="display:flex;gap:10px;align-items:center;">
+        <button class="pill-btn ${liked?'primary':''}" style="padding:6px 12px;" onclick="toggleLike('${p.id}',${liked})">${liked?'❤️':'🤍'} ${postLikes.length}</button>
+        <span class="small">${postComments.length} comment${postComments.length===1?'':'s'}</span>
+      </div>
+      <div class="divider"></div>
+      ${postComments.map(c=>`<div class="small mt8"><b>${displayName(profileById[c.author]||{first_name:'Unknown',last_name:''})}:</b> ${c.text}</div>`).join('')}
+      <div class="mt8" style="display:flex;gap:8px;">
+        <input type="text" id="commentInput-${p.id}" placeholder="Add a comment..." style="margin-bottom:0;">
+        <button class="pill-btn" onclick="addComment('${p.id}')">Send</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 /* ============ DERIVED (REAL) STATS ============
    Nothing below is pre-set data — every number is calculated live from what the
@@ -468,6 +924,8 @@ function go(pageId){
     chat:['AI Coach Chat','Ask anything about technique, training, nutrition, or racing.'],
     calendar:['Calendar','Your training, recovery, and competition schedule.'],
     profile:['Profile','Manage your athlete information.'],
+    friends:['Friends','Connect with other swimmers.'],
+    feed:['Social Feed','Share achievements, workouts, and race results.'],
     coachportal:['Coach Portal','Monitor athlete progress and manage training.']};
   document.getElementById('pageTitle').textContent=titles[pageId][0];
   document.getElementById('pageSub').textContent=titles[pageId][1];
@@ -477,8 +935,9 @@ function go(pageId){
 function openModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
-/* ============ PREMIUM / PLAN ============ */
-function isPremium(){return DB.plan==='premium';}
+/* ============ PREMIUM / PLAN (real, server-verified via Stripe) ============ */
+let subscription = { plan: 'free' }; // loaded from the `subscriptions` table on login — never set by the client
+function isPremium(){ return subscription.plan==='premium'; }
 let selectedTier='monthly';
 function selectPlanTier(t){
   selectedTier=t;
@@ -486,12 +945,61 @@ function selectPlanTier(t){
   document.getElementById('ptYearly').classList.toggle('selected',t==='yearly');
   document.getElementById('upgradeCta').textContent = t==='monthly'?'A$9.99/month':'A$95.99/year';
 }
-function activatePremium(){
-  DB.plan='premium'; DB.planTier=selectedTier; saveDB();
-  closeModal('upgradeModal');
+async function loadSubscription(){
+  const { data, error } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).maybeSingle();
+  subscription = (!error && data) ? data : { plan:'free' };
   updatePlanUI();
-  alert('🎉 Premium activated! Unlimited AI Coach, Video Analysis, AI Meal Analysis, and all advanced tools are now unlocked.');
-  renderPage(currentPage);
+}
+async function activatePremium(btn){
+  if(btn){ btn.disabled=true; btn.textContent='Redirecting to checkout...'; }
+  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+  let detail = 'Unknown error.';
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        tier: selectedTier,
+        successUrl: cleanUrl + '?checkout=success',
+        cancelUrl: cleanUrl + '?checkout=cancelled',
+      }),
+    });
+    const text = await res.text();
+    let body; try{ body = JSON.parse(text); }catch(e){ body = { raw: text }; }
+    if(!res.ok || !body.url){
+      detail = body.error || body.raw || `HTTP ${res.status}`;
+      throw new Error(detail);
+    }
+    window.location.href = body.url; // real Stripe-hosted checkout page
+    return;
+  }catch(e){
+    alert('Could not start checkout: ' + (detail || e.message));
+    if(btn){ btn.disabled=false; btn.textContent='Start Premium — '+ (selectedTier==='monthly'?'A$9.99/month':'A$95.99/year'); }
+  }
+}
+async function checkCheckoutReturn(){
+  const params=new URLSearchParams(window.location.search);
+  const status=params.get('checkout');
+  if(!status) return;
+  history.replaceState(null,'',window.location.pathname);
+  if(status==='success'){
+    alert('Payment received! Confirming your subscription (this can take a few seconds)...');
+    for(let i=0;i<6;i++){
+      await new Promise(r=>setTimeout(r,1500));
+      await loadSubscription();
+      if(isPremium()) break;
+    }
+    if(isPremium()) alert('🎉 Premium is active! Unlimited AI Coach, Video Analysis, and all advanced tools are unlocked.');
+    else alert("Payment succeeded but we haven't confirmed it on our end yet — this usually catches up within a minute. Refresh shortly.");
+    renderPage(currentPage);
+  } else if(status==='cancelled'){
+    // No charge was made — nothing to do.
+  }
 }
 function updatePlanUI(){
   const pill=document.getElementById('planPill');
@@ -1326,40 +1834,91 @@ function renderNotifs(){
 function renderProfile(){
   const el=document.getElementById('page-profile');
   const p=DB.profile;
+  const u=currentUser;
+  const priv=u.privacy||{};
+  const privField=(key,label)=>`
+    <div class="list-item"><span>${label}</span>
+      <select id="priv_${key}" onchange="saveOnePrivacy('${key}')" style="width:auto;margin:0;padding:4px 8px;">
+        <option value="public" ${priv[key]==='public'?'selected':''}>Public</option>
+        <option value="friends" ${priv[key]==='friends'?'selected':''}>Friends only</option>
+        <option value="private" ${priv[key]==='private'?'selected':''}>Private</option>
+      </select></div>`;
   el.innerHTML=`
   <div class="two-col">
     <div class="card">
+      <h3>Account</h3>
+      <div class="form-grid">
+        <div class="field"><label>First Name</label><input type="text" id="pFirst" value="${u.first_name||''}"></div>
+        <div class="field"><label>Last Name</label><input type="text" id="pLast" value="${u.last_name||''}"></div>
+      </div>
+      <label>Email</label><input type="email" value="${u.email||''}" disabled>
+      <div class="form-grid">
+        <div class="field"><label>Date of Birth</label><input type="date" id="pDob" value="${u.dob||''}"></div>
+        <div class="field"><label>Country</label><input type="text" id="pCountry" value="${u.country||''}"></div>
+      </div>
+      <label>Swimming Club</label><input type="text" id="pClub" value="${u.club||''}">
+      <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="saveAccount()">Save Account</button>
+    </div>
+    <div class="card">
       <h3>Athlete Information</h3>
       <div class="form-grid">
-        <div class="field"><label>Name</label><input type="text" id="pName" value="${p.name}"></div>
         <div class="field"><label>Age</label><input type="number" id="pAge" value="${p.age??''}"></div>
         <div class="field"><label>Height (cm)</label><input type="number" id="pHeight" value="${p.height??''}"></div>
         <div class="field"><label>Weight (kg)</label><input type="number" id="pWeight" value="${p.weight??''}"></div>
-        <div class="field"><label>Swimming Club</label><input type="text" id="pClub" value="${p.club}"></div>
         <div class="field"><label>Coach</label><input type="text" id="pCoach" value="${p.coach}"></div>
       </div>
       <label>Preferred Strokes (comma separated)</label><input type="text" id="pStrokes" value="${p.strokes.join(', ')}">
       <label>Favourite Events (comma separated)</label><input type="text" id="pEvents" value="${p.events.join(', ')}">
       <label>Personal Goals</label><textarea id="pGoals">${p.goals}</textarea>
-      <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="saveProfile()">Save Profile</button>
+      <button class="pill-btn primary" style="width:100%;justify-content:center;" onclick="saveAthleteInfo()">Save Athlete Info</button>
     </div>
+  </div>
+  <div class="grid grid-2 mt20">
     <div class="card">
       <h3>Personal Bests Summary</h3>
       ${Object.keys(DB.pbs).length? Object.entries(DB.pbs).map(([ev,d])=>`<div class="list-item"><span>${ev}</span><b style="color:var(--aqua2);">${d.time}</b></div>`).join('') : '<div class="small">No personal bests added yet. Track your improvement over time.</div>'}
     </div>
+    <div class="card">
+      <h3>Privacy Settings</h3>
+      <div class="hint">Choose who can see each part of your profile.</div>
+      ${privField('profilePic','Profile Picture')}
+      ${privField('club','Swimming Club')}
+      ${privField('strokes','Favourite Strokes')}
+      ${privField('events','Favourite Events')}
+      ${privField('pbs','Personal Bests')}
+      ${privField('achievements','Achievements')}
+      ${privField('competitions','Competition Results')}
+      ${privField('streaks','Training Streaks')}
+      ${privField('goals','Goals')}
+    </div>
   </div>`;
 }
-function saveProfile(){
+async function saveAccount(){
+  const updates={
+    first_name: jv('pFirst'), last_name: jv('pLast'),
+    dob: jv('pDob') || null, country: jv('pCountry'), club: jv('pClub'),
+  };
+  const { error } = await sb.from('profiles').update(updates).eq('id', currentUser.id);
+  if(error){ alert('Could not save account: '+error.message); return; }
+  Object.assign(currentUser, updates);
+  document.getElementById('topAvatar').textContent=avatarInitials(displayName(currentUser));
+  alert('Account saved!');
+}
+async function saveOnePrivacy(key){
+  const val=jv('priv_'+key);
+  const priv={...(currentUser.privacy||{}), [key]:val};
+  const { error } = await sb.from('profiles').update({ privacy: priv }).eq('id', currentUser.id);
+  if(error){ alert('Could not save privacy setting: '+error.message); return; }
+  currentUser.privacy=priv;
+}
+function saveAthleteInfo(){
   const p=DB.profile;
-  p.name=document.getElementById('pName').value; p.age=+document.getElementById('pAge').value;
-  p.height=+document.getElementById('pHeight').value; p.weight=+document.getElementById('pWeight').value;
-  p.club=document.getElementById('pClub').value; p.coach=document.getElementById('pCoach').value;
-  p.strokes=document.getElementById('pStrokes').value.split(',').map(s=>s.trim());
-  p.events=document.getElementById('pEvents').value.split(',').map(s=>s.trim());
-  p.goals=document.getElementById('pGoals').value;
+  p.age=+jv('pAge'); p.height=+jv('pHeight'); p.weight=+jv('pWeight'); p.coach=jv('pCoach');
+  p.strokes=jv('pStrokes').split(',').map(s=>s.trim()).filter(Boolean);
+  p.events=jv('pEvents').split(',').map(s=>s.trim()).filter(Boolean);
+  p.goals=jv('pGoals');
   saveDB();
-  document.getElementById('topAvatar').textContent=avatarInitials(p.name);
-  alert('Profile saved!');
+  alert('Athlete info saved!');
 }
 
 /* ============ RENDER: COACH PORTAL ============ */
@@ -1371,7 +1930,7 @@ function renderCoachPortal(){
   const recScore=recoveryScore();
   el.innerHTML=`
   <div class="grid grid-4">
-    <div class="card"><h3>Athlete</h3><div class="big">${DB.profile.name||'No name set'}</div><div class="small">${DB.profile.club||'No club set'}</div></div>
+    <div class="card"><h3>Athlete</h3><div class="big">${displayName(currentUser)||'No name set'}</div><div class="small">${currentUser.club||'No club set'}</div></div>
     <div class="card"><h3>Attendance</h3><div class="big">${attPct!==null?attPct+'%':'No data yet'}</div></div>
     <div class="card"><h3>Nutrition Avg</h3><div class="big">${avgNutri!==null?avgNutri+'/100':'No meals logged'}</div></div>
     <div class="card"><h3>Recovery</h3><div class="big">${recScore!==null?recScore+'/100':'No data yet'}</div></div>
@@ -1408,7 +1967,7 @@ function renderPage(id){
   ({dashboard:renderDashboard,nutrition:renderNutrition,dryland:renderDryland,swimgen:renderSwimGen,
     journal:renderJournal,competitions:renderCompetitions,pbs:renderPBs,progress:renderProgress,
     goals:renderGoals,video:renderVideo,
-    chat:renderChat,calendar:renderCalendar,profile:renderProfile,coachportal:renderCoachPortal}[id])();
+    chat:renderChat,calendar:renderCalendar,profile:renderProfile,friends:renderFriends,feed:renderFeed,coachportal:renderCoachPortal}[id])();
 }
 
 /* ============ GOAL PLANNER ============ */
@@ -1527,16 +2086,12 @@ function handleVideoUpload(e){
   `;
 }
 
-/* ============ INIT ============ */
+/* ============ HELPERS ============ */
 function avatarInitials(name){
   const initials=(name||'').trim().split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
   return initials||'👤';
 }
-document.getElementById('topAvatar').textContent=avatarInitials(DB.profile.name);
-updatePlanUI();
-renderNotifs();
-go('dashboard');
+initAuth();
 </script>
 </body>
 </html>
-
